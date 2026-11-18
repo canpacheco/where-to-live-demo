@@ -188,7 +188,7 @@ counties = load_counties()
 MUSIC_HTML = (HERE / "music.html").read_text(encoding="utf-8")
 
 with st.sidebar:
-    components.html(MUSIC_HTML, height=44)
+    components.html(MUSIC_HTML, height=46)
     st.markdown("## Outfit your wagon")
     st.write("Drag the five factors into order. The top one matters most to you.")
     order = sort_items(
@@ -443,4 +443,4 @@ with method_tab:
         "- The files cover different years, from 2018 to September 2026.\n"
         "- The trail theme is a homage to a classic computer game. The pixel wagon is original art.\n"
         "- The music is an original 8-bit arrangement of Korobeiniki, a Russian folk song in the public "
-        "domain. It plays only after you press the music button.")
+        "domain. It starts on your first click or key press, and the speaker button mutes it.")

@@ -1,97 +1,153 @@
-<!-- Chiptune arrangement of "Korobeiniki", a Russian folk song in the public domain.
-     Synthesized live with the Web Audio API. It starts only when the visitor clicks. -->
+<!-- Trail music: an original 8-bit arrangement of "Korobeiniki", a Russian folk song in the public
+     domain, synthesized with the Web Audio API. The engine lives in the app page (the parent of this
+     frame), so it survives Streamlit reruns. Browsers allow sound only after the visitor interacts
+     with the page, so the music starts on the first click, tap, or key press anywhere on the page,
+     or at once when the browser already allows it. The speaker button mutes and unmutes it. -->
 <style>
-  body { margin: 0; background: transparent; }
-  #m { font-family: 'Courier New', monospace; font-weight: bold; font-size: 14px; color: #0D110C;
-       background: #8BE04E; border: 0; padding: 8px 12px; cursor: pointer; width: 100%;
-       box-shadow: 3px 3px 0 #050705; }
-  #m.on { background: #F2A541; }
-  #m:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #050705; }
+  html, body { margin: 0; background: transparent; }
+  #spk { width: 40px; height: 40px; border: 0; padding: 0; cursor: pointer; background: #8BE04E;
+         box-shadow: 3px 3px 0 #050705; display: flex; align-items: center; justify-content: center; }
+  #spk.off { background: #3a4636; }
+  #spk:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #050705; }
+  #spk svg { width: 26px; height: 26px; }
 </style>
-<button id="m" title="Korobeiniki, a Russian folk song, in an original 8-bit arrangement">PLAY TRAIL MUSIC</button>
+<button id="spk" aria-label="Music on" title="Music on (click to mute)"></button>
 <script>
-const MIDI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-function freq(name) {
-  const sharp = name.includes("#");
-  const letter = name[0];
-  const octave = parseInt(name.slice(sharp ? 2 : 1), 10);
-  const midi = 12 * (octave + 1) + MIDI[letter] + (sharp ? 1 : 0);
-  return 440 * Math.pow(2, (midi - 69) / 12);
-}
-// Melody in eighth notes: [note or null for a rest, length in eighths]. Eight bars of eight eighths.
-const MELODY = [
-  ["E5", 2], ["B4", 1], ["C5", 1], ["D5", 2], ["C5", 1], ["B4", 1],
-  ["A4", 2], ["A4", 1], ["C5", 1], ["E5", 2], ["D5", 1], ["C5", 1],
-  ["B4", 3], ["C5", 1], ["D5", 2], ["E5", 2],
-  ["C5", 2], ["A4", 2], ["A4", 2], [null, 2],
-  [null, 1], ["D5", 2], ["F5", 1], ["A5", 2], ["G5", 1], ["F5", 1],
-  ["E5", 3], ["C5", 1], ["E5", 2], ["D5", 1], ["C5", 1],
-  ["B4", 2], ["B4", 1], ["C5", 1], ["D5", 2], ["E5", 2],
-  ["C5", 2], ["A4", 2], ["A4", 2], [null, 2],
-];
-// Bass: one root per bar, played as low-high eighths.
-const BASS_ROOTS = ["E2", "A2", "G#2", "A2", "D2", "C2", "G#2", "A2"];
-const STEPS = 64;
-const EIGHTH = 60 / 144 / 2;
+const ICON_ON = '<svg viewBox="0 0 13 13" shape-rendering="crispEdges"><g fill="#0D110C">' +
+  '<rect x="1" y="5" width="2" height="3"/><rect x="3" y="4" width="1" height="5"/><rect x="4" y="3" width="1" height="7"/>' +
+  '<rect x="5" y="2" width="1" height="9"/><rect x="7" y="5" width="1" height="3"/><rect x="9" y="3" width="1" height="7"/>' +
+  '<rect x="8" y="2" width="1" height="1"/><rect x="8" y="10" width="1" height="1"/><rect x="11" y="2" width="1" height="9"/>' +
+  '<rect x="10" y="1" width="1" height="1"/><rect x="10" y="11" width="1" height="1"/></g></svg>';
+const ICON_OFF = '<svg viewBox="0 0 13 13" shape-rendering="crispEdges"><g fill="#E9F5DB">' +
+  '<rect x="1" y="5" width="2" height="3"/><rect x="3" y="4" width="1" height="5"/><rect x="4" y="3" width="1" height="7"/>' +
+  '<rect x="5" y="2" width="1" height="9"/><rect x="7" y="4" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/>' +
+  '<rect x="9" y="6" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="11" y="8" width="1" height="1"/>' +
+  '<rect x="11" y="4" width="1" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/>' +
+  '<rect x="7" y="8" width="1" height="1"/></g></svg>';
 
-const melodyAt = {};
-let step = 0;
-for (const [note, len] of MELODY) {
-  if (note) melodyAt[step] = [note, len];
-  step += len;
-}
+// The engine source is injected into the parent page so it keeps running if this frame reloads.
+const ENGINE = `
+(function () {
+  if (window.__trailMusic) return;
+  const NOTE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  function freq(name) {
+    const sharp = name.includes("#");
+    const octave = parseInt(name.slice(sharp ? 2 : 1), 10);
+    const midi = 12 * (octave + 1) + NOTE[name[0]] + (sharp ? 1 : 0);
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+  const MELODY = [
+    ["E5", 2], ["B4", 1], ["C5", 1], ["D5", 2], ["C5", 1], ["B4", 1],
+    ["A4", 2], ["A4", 1], ["C5", 1], ["E5", 2], ["D5", 1], ["C5", 1],
+    ["B4", 3], ["C5", 1], ["D5", 2], ["E5", 2],
+    ["C5", 2], ["A4", 2], ["A4", 2], [null, 2],
+    [null, 1], ["D5", 2], ["F5", 1], ["A5", 2], ["G5", 1], ["F5", 1],
+    ["E5", 3], ["C5", 1], ["E5", 2], ["D5", 1], ["C5", 1],
+    ["B4", 2], ["B4", 1], ["C5", 1], ["D5", 2], ["E5", 2],
+    ["C5", 2], ["A4", 2], ["A4", 2], [null, 2]
+  ];
+  const BASS = ["E2", "A2", "G#2", "A2", "D2", "C2", "G#2", "A2"];
+  const STEPS = 64, EIGHTH = 60 / 144 / 2;
+  const melodyAt = {};
+  let s = 0;
+  for (const [note, len] of MELODY) { if (note) melodyAt[s] = [note, len]; s += len; }
 
-let ctx = null, master = null, timer = null, nextTime = 0, index = 0, playing = false;
+  let muted = false;
+  try { muted = localStorage.getItem("trailMusicMuted") === "1"; } catch (e) {}
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC();
+  const master = ctx.createGain();
+  master.gain.value = 0.12;
+  master.connect(ctx.destination);
+  let timer = null, nextTime = 0, index = 0;
+  const listeners = [];
 
-function tone(f, start, dur, type, level) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.value = f;
-  gain.gain.setValueAtTime(0, start);
-  gain.gain.linearRampToValueAtTime(level, start + 0.01);
-  gain.gain.setValueAtTime(level, start + dur * 0.8);
-  gain.gain.linearRampToValueAtTime(0, start + dur * 0.95);
-  osc.connect(gain).connect(master);
-  osc.start(start);
-  osc.stop(start + dur);
-}
-
-function scheduler() {
-  while (nextTime < ctx.currentTime + 0.25) {
-    if (melodyAt[index]) {
-      const [note, len] = melodyAt[index];
-      tone(freq(note), nextTime, len * EIGHTH, "square", 0.22);
+  function tone(f, start, dur, type, level) {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = type; osc.frequency.value = f;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(level, start + 0.01);
+    gain.gain.setValueAtTime(level, start + dur * 0.8);
+    gain.gain.linearRampToValueAtTime(0, start + dur * 0.95);
+    osc.connect(gain).connect(master);
+    osc.start(start); osc.stop(start + dur);
+  }
+  function scheduler() {
+    while (nextTime < ctx.currentTime + 0.3) {
+      if (melodyAt[index]) { const [n, l] = melodyAt[index]; tone(freq(n), nextTime, l * EIGHTH, "square", 0.22); }
+      const root = BASS[Math.floor(index / 8)];
+      const oct = parseInt(root.slice(-1), 10) + (index % 2);
+      tone(freq(root.slice(0, -1) + oct), nextTime, EIGHTH, "triangle", 0.35);
+      nextTime += EIGHTH;
+      index = (index + 1) % STEPS;
     }
-    const root = BASS_ROOTS[Math.floor(index / 8)];
-    const octave = parseInt(root.slice(-1), 10) + (index % 2);
-    tone(freq(root.slice(0, -1) + octave), nextTime, EIGHTH, "triangle", 0.35);
-    nextTime += EIGHTH;
-    index = (index + 1) % STEPS;
   }
+  function playing() { return ctx.state === "running" && timer !== null; }
+  function notify() { for (const f of listeners) { try { f(); } catch (e) {} } }
+  function start() {
+    if (muted || document.hidden) return;
+    ctx.resume().then(() => {
+      if (ctx.state !== "running") return;
+      if (timer === null) { nextTime = ctx.currentTime + 0.05; timer = setInterval(scheduler, 50); }
+      notify();
+    }).catch(() => {});
+  }
+  function stop() {
+    if (timer !== null) { clearInterval(timer); timer = null; }
+    ctx.suspend().catch(() => {});
+    notify();
+  }
+  const unlock = () => start();
+  ["pointerdown", "keydown", "touchstart"].forEach(t => document.addEventListener(t, unlock, true));
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); else start(); });
+  // A first click inside another frame (the drag list) never reaches this page's listeners, but it
+  // still counts as an interaction, so check once a second until the music is running.
+  const waiter = setInterval(() => {
+    if (playing()) { clearInterval(waiter); return; }
+    const active = navigator.userActivation ? navigator.userActivation.hasBeenActive : false;
+    if (active && !muted) start();
+  }, 1000);
+
+  window.__trailMusic = {
+    isMuted: () => muted,
+    isPlaying: playing,
+    onChange: f => listeners.push(f),
+    toggle: () => {
+      if (!muted && !playing()) { start(); return; }
+      muted = !muted;
+      try { localStorage.setItem("trailMusicMuted", muted ? "1" : "0"); } catch (e) {}
+      if (muted) stop(); else start();
+      notify();
+    }
+  };
+  start();
+})();
+`;
+
+const button = document.getElementById("spk");
+let music = null;
+try {
+  const parentWindow = window.parent;
+  if (!parentWindow.__trailMusic) {
+    const tag = parentWindow.document.createElement("script");
+    tag.textContent = ENGINE;
+    parentWindow.document.head.appendChild(tag);
+  }
+  music = parentWindow.__trailMusic;
+} catch (e) {
+  music = null;
 }
 
-const button = document.getElementById("m");
-button.addEventListener("click", async () => {
-  if (!ctx) {
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain();
-    master.gain.value = 0.12;
-    master.connect(ctx.destination);
-  }
-  if (playing) {
-    clearInterval(timer);
-    await ctx.suspend();
-    playing = false;
-    button.textContent = "PLAY TRAIL MUSIC";
-    button.classList.remove("on");
-  } else {
-    await ctx.resume();
-    nextTime = ctx.currentTime + 0.05;
-    timer = setInterval(scheduler, 50);
-    playing = true;
-    button.textContent = "STOP THE MUSIC";
-    button.classList.add("on");
-  }
-});
+function draw() {
+  const on = music && !music.isMuted();
+  button.innerHTML = on ? ICON_ON : ICON_OFF;
+  button.classList.toggle("off", !on);
+  button.setAttribute("aria-label", on ? "Music on" : "Music off");
+  button.title = on ? "Music on (click to mute)" : "Music off (click to play)";
+}
+if (music) {
+  music.onChange(draw);
+  button.addEventListener("click", () => music.toggle());
+}
+draw();
 </script>
