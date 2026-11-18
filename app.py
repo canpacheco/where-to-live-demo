@@ -51,7 +51,18 @@ h2 {{ font-size: clamp(0.9rem, 1.8vw, 1.15rem) !important; line-height: 1.6 !imp
 h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .stMarkdown p, .stMarkdown li, label, .stCaption, [data-testid="stSidebar"] p {{
   font-family: 'VT323', monospace !important; font-size: 1.3rem !important; line-height: 1.25 !important; }}
-.stTabs [data-baseweb="tab"] p {{ font-family: 'Press Start 2P', monospace !important; font-size: 0.7rem !important; }}
+[data-testid="stTabs"] [role="tablist"] {{ gap: 16px; flex-wrap: wrap; margin: 18px 0 6px 0; overflow: visible !important; }}
+[data-testid="stTab"] {{ flex: 1 1 0; min-width: 150px; height: auto; padding: 16px 10px;
+  justify-content: center; align-items: center; min-height: 64px; background: {PANEL}; border: 3px solid {GREEN}; box-shadow: 4px 4px 0 #050705;
+  transition: transform 0.1s, box-shadow 0.1s; }}
+[data-testid="stTab"]:hover {{ transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #050705; }}
+[data-testid="stTab"][aria-selected="true"] {{ background: {GREEN}; }}
+[data-testid="stTab"] p {{ font-family: 'Press Start 2P', monospace !important; font-size: 0.72rem !important;
+  line-height: 1.6 !important; text-align: center; color: {CREAM}; white-space: normal !important; }}
+[data-testid="stTab"][aria-selected="true"] p {{ color: {INK} !important; }}
+[data-testid="stTabs"] [role="tablist"] > :not([data-testid="stTab"]) {{ display: none; }}
+[data-testid="stTabs"] [role="tablist"], [data-testid="stTabs"] [role="tablist"]::after {{ border: 0 !important; }}
+[data-testid="stTabPanel"] {{ padding-top: 22px; }}
 .banner {{ border: 4px solid {GREEN}; background: {PANEL}; padding: 18px 22px 10px 22px; margin-bottom: 10px;
   box-shadow: 6px 6px 0 {INK}, 6px 6px 0 2px {GREEN}; }}
 .banner .kicker {{ font-family: 'Press Start 2P', monospace; color: {AMBER}; font-size: 0.75rem; }}
