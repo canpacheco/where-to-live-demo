@@ -195,6 +195,15 @@ fig.tight_layout()
 fig.savefig(CHART_DIR / "rent_income.png", dpi=150)
 plt.close(fig)
 
+# ------------------------------------------------------------------ data files for the interactive charts
+by_state.rename(columns={"median": "median_rent", "count": "counties_with_rent"}).to_csv(
+    DATA_DIR / "state_rent.csv")
+two = series[["05007", "05143"]].rename(columns={"05007": "Benton County, AR", "05143": "Washington County, AR"})
+two.index.name = "month"
+two.to_csv(DATA_DIR / "rent_series.csv")
+GEOJSON = HERE.parent.parent / "materials" / "data" / "us_counties_geojson.json"
+(DATA_DIR / "us_counties.json").write_bytes(GEOJSON.read_bytes())
+
 # ------------------------------------------------------------------ check numbers
 benton = t[t.GEOID == "05007"].iloc[0]
 print("rows", len(t))
