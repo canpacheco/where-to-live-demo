@@ -18,6 +18,8 @@ The website has four parts. The Ranking tab shows the counties with the highest 
 
 The look is a homage to a classic computer game about moving west. The pixel wagon is original art drawn in code, and the fonts are Press Start 2P and VT323 from Google Fonts.
 
+The music button plays an original 8-bit arrangement of Korobeiniki, a Russian folk song in the public domain, synthesized in the browser with the Web Audio API. It plays only after the visitor presses the button.
+
 ## Run it
 
 ```

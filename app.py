@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_sortables import sort_items
 
 HERE = Path(__file__).resolve().parent
@@ -60,11 +61,14 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 @keyframes roll {{ from {{ left: -200px; }} to {{ left: calc(100% - 200px); }} }}
 .panel {{ border: 3px solid {GREEN}; background: {PANEL}; padding: 14px 18px; margin: 10px 0;
   box-shadow: 4px 4px 0 #050705; }}
+.panel {{ container-type: inline-size; }}
 .arrived {{ font-family: 'Press Start 2P', monospace; color: {GREEN}; overflow: hidden; white-space: nowrap;
-  border-right: 0.6em solid {GREEN}; width: 0; max-width: 100%; font-size: clamp(0.65rem, 1.6vw, 1rem);
-  animation: typing 1.8s steps(var(--n)) 0.2s forwards, blink 0.8s step-end 0s 5; }}
+  border-right: 0.6em solid transparent; width: 0; line-height: 1.8;
+  font-size: min(1rem, calc(88cqw / (var(--n) + 1)));
+  animation: typing 1.1s steps(var(--n)) var(--d) forwards; }}
+.arrived.last {{ animation: typing 1.1s steps(var(--n)) var(--d) forwards, blink 0.8s step-end var(--d) 6; }}
 @keyframes typing {{ to {{ width: calc(var(--n) * 1ch + 0.7em); }} }}
-@keyframes blink {{ 50% {{ border-color: transparent; }} }}
+@keyframes blink {{ 0% {{ border-color: {GREEN}; }} 50% {{ border-color: transparent; }} }}
 .podium {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 14px 0; }}
 .card {{ border: 3px solid {CREAM}; background: {PANEL}; padding: 14px; opacity: 0;
   animation: rise 0.5s ease-out forwards; box-shadow: 4px 4px 0 #050705; }}
@@ -181,7 +185,10 @@ def plotly_look(fig, height):
 counties = load_counties()
 
 # ------------------------------------------------------------------ sidebar
+MUSIC_HTML = (HERE / "music.html").read_text(encoding="utf-8")
+
 with st.sidebar:
+    components.html(MUSIC_HTML, height=44)
     st.markdown("## Outfit your wagon")
     st.write("Drag the five factors into order. The top one matters most to you.")
     order = sort_items(
@@ -237,8 +244,10 @@ with ranking_tab:
                     unsafe_allow_html=True)
     else:
         best = ranked.iloc[0]
-        message = f"YOUR WAGON HAS REACHED {best['label'].upper()}"
-        st.markdown(f'<div class="panel"><div class="arrived" style="--n:{len(message)}">{message}</div>'
+        line1 = "YOUR WAGON HAS REACHED"
+        line2 = best["label"].upper()
+        st.markdown(f'<div class="panel"><div class="arrived" style="--n:{len(line1)};--d:0.2s">{line1}</div>'
+                    f'<div class="arrived last" style="--n:{len(line2)};--d:1.3s">{line2}</div>'
                     f'<div class="supplies" style="margin-top:8px;">Fit score {best["fit_score"]:.1f} out of 100, '
                     f'the best of {len(ranked):,} counties on your trail.</div></div>', unsafe_allow_html=True)
 
@@ -432,4 +441,6 @@ with method_tab:
         "- A comfortable month is judged by its average temperature, which hides hot afternoons and cold nights.\n"
         "- The map draws Connecticut's old counties, so its nine planning regions appear gray.\n"
         "- The files cover different years, from 2018 to September 2026.\n"
-        "- The trail theme is a homage to a classic computer game. The pixel wagon is original art.")
+        "- The trail theme is a homage to a classic computer game. The pixel wagon is original art.\n"
+        "- The music is an original 8-bit arrangement of Korobeiniki, a Russian folk song in the public "
+        "domain. It plays only after you press the music button.")
