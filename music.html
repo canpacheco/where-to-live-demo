@@ -108,6 +108,34 @@ const ENGINE = `
     if (active && !muted) start();
   }, 1000);
 
+  // Sound effects, silenced by the same mute as the music.
+  function blip() {
+    if (muted) return;
+    ctx.resume().then(() => {
+      const t = ctx.currentTime + 0.01;
+      tone(988, t, 0.07, "square", 0.3);
+      tone(1319, t + 0.07, 0.1, "square", 0.3);
+    }).catch(() => {});
+  }
+  function fanfare(delay) {
+    if (muted) return;
+    ctx.resume().then(() => {
+      const t = ctx.currentTime + delay;
+      const notes = [[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.42], [784, 0.12], [1047, 0.6]];
+      let at = t;
+      for (const [f, d] of notes) { tone(f, at, d, "square", 0.32); tone(f / 2, at, d, "triangle", 0.4); at += d; }
+    }).catch(() => {});
+  }
+  document.addEventListener("click", (e) => {
+    const hit = e.target && e.target.closest && e.target.closest('[class*="st-key-pick_"], [class*="st-key-go_"]');
+    if (hit) { start(); blip(); }
+  }, true);
+  let lastCue = null;
+  new MutationObserver(() => {
+    const cue = document.querySelector(".fanfare-cue");
+    if (cue && cue.dataset.cue !== lastCue) { lastCue = cue.dataset.cue; fanfare(1.55); }
+  }).observe(document.body, { childList: true, subtree: true });
+
   window.__trailMusic = {
     isMuted: () => muted,
     isPlaying: playing,

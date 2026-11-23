@@ -53,7 +53,8 @@ st.set_page_config(page_title="Where should a finance graduate live?", page_icon
 # ------------------------------------------------------------------ look and feel
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Nunito:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Pixelify+Sans:wght@400..700&display=swap');
+* {{ font-variant-ligatures: none; font-feature-settings: "liga" 0, "clig" 0; }}
 h1, h2, h3, .pixel {{ font-family: 'Press Start 2P', monospace !important; letter-spacing: 0.02em; }}
 h1 {{ font-size: clamp(1.1rem, 2.6vw, 1.8rem) !important; line-height: 1.5 !important; color: {GREEN}; }}
 h2 {{ font-size: clamp(0.9rem, 1.8vw, 1.15rem) !important; line-height: 1.6 !important; color: {AMBER}; }}
@@ -106,39 +107,57 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .supplies .pips {{ display: inline-flex; gap: 3px; }}
 .supplies .pip {{ width: 10px; height: 10px; background: #2c3a28; display: inline-block; }}
 .supplies .pip.on {{ background: {GREEN}; }}
-.question {{ font-family: 'Nunito', sans-serif; font-weight: 800; color: {CREAM}; font-size: clamp(1.35rem, 2.6vw, 2rem);
-  line-height: 1.25; margin: 18px 0 12px 0; animation: rise 0.4s ease-out both; }}
+.question {{ font-family: 'Pixelify Sans', sans-serif; font-weight: 600; color: {CREAM}; font-size: clamp(1.4rem, 2.6vw, 2rem);
+  line-height: 1.25; margin: 18px 0 12px 0; animation: slidein 0.4s ease-out both; }}
 .progress-label {{ font-family: 'Press Start 2P', monospace; color: {AMBER}; font-size: 0.65rem; margin-top: 6px; }}
 [class*="st-key-pick_"] button {{ min-height: 150px; width: 100%; background: {PANEL}; border: 3px solid {CREAM};
-  box-shadow: 5px 5px 0 #050705; animation: rise 0.45s ease-out both; transition: transform 0.1s, border-color 0.1s; }}
+  box-shadow: 5px 5px 0 #050705; animation: slidein 0.45s ease-out 0.05s both; transition: transform 0.1s, border-color 0.1s; }}
+[class*="st-key-pick_"][class*="_right"] button, [class*="st-key-pick_comfort_1"] button,
+[class*="st-key-pick_comfort_3"] button {{ animation-delay: 0.15s; }}
+[class*="st-key-pick_"] button:active {{ transform: translate(3px, 3px) scale(0.98); box-shadow: 1px 1px 0 #050705;
+  border-color: {GREEN}; background: #24331F; }}
+@keyframes slidein {{ from {{ opacity: 0; transform: translateX(48px); }} to {{ opacity: 1; transform: none; }} }}
 [class*="st-key-pick_"] button:hover {{ border-color: {GREEN}; transform: translate(-2px, -2px); }}
-[class*="st-key-pick_"] button p {{ font-family: 'Nunito', sans-serif !important; font-weight: 700 !important;
-  font-size: 1.35rem !important; line-height: 1.35 !important; white-space: normal !important; color: {CREAM}; }}
+[class*="st-key-pick_"] button p {{ font-family: 'Pixelify Sans', sans-serif !important; font-weight: 500 !important;
+  font-size: 1.4rem !important; line-height: 1.3 !important; white-space: normal !important; color: {CREAM}; }}
 [class*="st-key-go_"] button {{ background: {GREEN}; border: 0; box-shadow: 4px 4px 0 #050705; }}
 [class*="st-key-go_"] button p {{ font-family: 'Press Start 2P', monospace !important; font-size: 0.75rem !important;
   color: {INK} !important; }}
 [class*="st-key-go_"] button:disabled {{ background: #2c3a28; box-shadow: none; }}
 [class*="st-key-go_"] button:disabled p {{ color: #7d8f76 !important; }}
-.persona {{ text-align: center; padding: 20px; }}
+.persona {{ text-align: center; padding: 20px; position: relative; min-height: 190px; }}
 .persona .type {{ font-family: 'Press Start 2P', monospace; color: {GREEN}; font-size: clamp(1rem, 3vw, 1.8rem);
-  margin: 14px 0; animation: rise 0.6s ease-out both; }}
-.persona .line {{ font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 1.35rem; color: {CREAM}; }}
+  margin: 14px 0; animation: drop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) 1.6s both; }}
+.persona .line {{ font-family: 'Pixelify Sans', sans-serif; font-weight: 500; font-size: 1.45rem; color: {CREAM};
+  animation: rise 0.4s ease-out 1.95s both; }}
+@keyframes drop {{ from {{ opacity: 0; transform: translateY(-60px) scale(1.5); }} to {{ opacity: 1; transform: none; }} }}
+.drumroll {{ position: absolute; inset: 0; background: {PANEL}; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px; z-index: 3; animation: drumout 0.25s ease-in 1.5s forwards; }}
+.drumroll .label {{ font-family: 'Press Start 2P', monospace; color: {AMBER}; font-size: 0.8rem;
+  animation: blinktext 0.5s step-end 0s 3; }}
+.drumroll .bar {{ width: 60%; height: 16px; border: 3px solid {GREEN}; padding: 2px; }}
+.drumroll .bar i {{ display: block; height: 100%; width: 0; background: {GREEN}; animation: load 1.4s steps(10) forwards; }}
+@keyframes drumout {{ to {{ opacity: 0; visibility: hidden; }} }}
+@keyframes load {{ to {{ width: 100%; }} }}
+@keyframes blinktext {{ 50% {{ opacity: 0.2; }} }}
+.confetti {{ position: absolute; left: 50%; top: 45%; width: 0; height: 0; z-index: 2; pointer-events: none; }}
+.confetti span {{ position: absolute; width: 9px; height: 9px; opacity: 0;
+  animation: burst 1.4s cubic-bezier(0.1, 0.7, 0.3, 1) var(--delay) forwards; }}
+@keyframes burst {{ 0% {{ opacity: 1; transform: translate(0, 0) rotate(0deg); }}
+  80% {{ opacity: 1; }} 100% {{ opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--r)); }} }}
 .rankbar {{ display: grid; grid-template-columns: 2em 12em 1fr; align-items: center; gap: 10px; margin: 6px 0;
-  font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 1.15rem; opacity: 0; animation: rise 0.4s ease-out forwards; }}
-.rankbar .fill {{ height: 16px; background: {GREEN}; }}
-.tiles {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 10px 0 18px 0; }}
-.tile {{ border: 3px solid #3c5236; background: {PANEL}; padding: 10px 12px; box-shadow: 3px 3px 0 #050705; }}
-.tile .label {{ font-family: 'Press Start 2P', monospace; font-size: 0.6rem; color: {AMBER}; margin-bottom: 6px; }}
-.tile .v {{ font-family: 'VT323', monospace; font-size: 1.3rem; color: {CREAM}; display: flex;
-  justify-content: space-between; gap: 8px; align-items: baseline; }}
-.tile .v .n {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-.tile .v .x {{ white-space: nowrap; }}
-.tile .v.win {{ color: {GREEN}; }}
-.tile .v.win .x::before {{ content: "WIN"; font-family: 'Press Start 2P', monospace; font-size: 0.45rem; color: {INK};
-  background: {GREEN}; padding: 2px 4px; margin-right: 6px; vertical-align: middle; }}
+  font-family: 'Pixelify Sans', sans-serif; font-weight: 500; font-size: 1.3rem; opacity: 0; animation: rise 0.4s ease-out forwards; }}
+.rankbar .fill {{ height: 16px; background: {GREEN}; animation: grow 0.6s ease-out both; animation-delay: inherit; }}
+@keyframes grow {{ from {{ width: 0; }} }}
+.trail {{ position: relative; height: 46px; margin: 6px 0 6px 0; border-bottom: 4px dashed #7a5a32; }}
+.trail .town {{ position: absolute; right: 0; bottom: 2px; }}
+.trailwagon {{ position: absolute; bottom: 2px; left: calc((100% - 132px) * var(--to));
+  animation: trailmove 0.8s steps(8) both; }}
+@keyframes trailmove {{ from {{ left: calc((100% - 132px) * var(--from)); }} to {{ left: calc((100% - 132px) * var(--to)); }} }}
 @media (prefers-reduced-motion: reduce) {{
-  .wagon, .arrived, .card, .hazard, .question, .persona .type, .rankbar,
-  [class*="st-key-pick_"] button {{ animation: none !important; opacity: 1 !important; }}
+  .wagon, .arrived, .card, .hazard, .question, .persona .type, .persona .line, .rankbar, .rankbar .fill,
+  .trailwagon, [class*="st-key-pick_"] button {{ animation: none !important; opacity: 1 !important; }}
+  .drumroll, .confetti {{ display: none !important; }}
   .arrived {{ width: auto !important; }}
 }}
 </style>
@@ -174,6 +193,21 @@ WAGON = [
 ]
 WAGON_SVG = pixel_svg(WAGON, {"w": "#F3EBD3", "b": "#8B5A2B", "k": "#C9B79C", "o": "#A0522D",
                               "h": "#F3EBD3", "y": "#6B4423"})
+SMALL_WAGON_SVG = pixel_svg(WAGON, {"w": "#F3EBD3", "b": "#8B5A2B", "k": "#C9B79C", "o": "#A0522D",
+                                    "h": "#F3EBD3", "y": "#6B4423"}, size=2)
+TOWN = [
+    ".....f.......",
+    ".....fff.....",
+    ".....f.......",
+    "....rrrr.....",
+    "...rrrrrr....",
+    "..rrrrrrrr...",
+    "...wwwwww....",
+    "...wwddww....",
+    "...wwddww....",
+]
+TOWN_SVG = pixel_svg(TOWN, {"f": AMBER, "r": RED, "w": "#F3EBD3", "d": "#8B5A2B"}, size=3)
+CONFETTI_COLORS = [GREEN, AMBER, "#5BC0EB", "#C3A6FF", "#FF6F91", CREAM]
 MUSIC_HTML = (HERE / "music.html").read_text(encoding="utf-8")
 
 
@@ -313,11 +347,33 @@ def hit_the_trail():
 
 
 # ------------------------------------------------------------------ page 1, the quiz
+def trail_progress(label, fraction):
+    """A dirt trail with the wagon rolling from its last spot to its new one, and a town at the end."""
+    previous = state.get("trail_fraction", fraction)
+    state.trail_fraction = fraction
+    st.markdown(f'<div class="progress-label">{label}</div><div class="trail"><div class="town">{TOWN_SVG}</div>'
+                f'<div class="trailwagon" style="--from:{previous:.3f};--to:{fraction:.3f}">{SMALL_WAGON_SVG}</div></div>',
+                unsafe_allow_html=True)
+
+
+def confetti_html(seed):
+    rng = random.Random(seed)
+    pieces = []
+    for _ in range(42):
+        angle = rng.uniform(0, 2 * math.pi)
+        distance = rng.uniform(110, 260)
+        dx = distance * math.cos(angle)
+        dy = distance * math.sin(angle) * 0.7 + rng.uniform(40, 120)
+        pieces.append(f'<span style="--dx:{dx:.0f}px;--dy:{dy:.0f}px;--r:{rng.randint(-540, 540)}deg;'
+                      f'--delay:{1.62 + rng.uniform(0, 0.12):.2f}s;background:{rng.choice(CONFETTI_COLORS)}"></span>')
+    return '<div class="confetti">' + "".join(pieces) + "</div>"
+
+
 def quiz_page():
     st.markdown('<style>[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], '
                 '[data-testid="collapsedControl"] { display: none !important; } '
-                '.banner .tag, label, .stMarkdown p { font-family: "Nunito", sans-serif !important; '
-                'font-weight: 600 !important; font-size: 1.1rem !important; line-height: 1.4 !important; }'
+                '.banner .tag, label, .stMarkdown p { font-family: "Pixelify Sans", sans-serif !important; '
+                'font-weight: 400 !important; font-size: 1.25rem !important; line-height: 1.35 !important; }'
                 '</style>', unsafe_allow_html=True)
     header("Answer about a dozen quick questions, and we will find the county that fits you. "
            "No wrong answers, only wrong turns at the river.", wagon=False)
@@ -330,15 +386,21 @@ def quiz_page():
         result = quiz.replay(factors, state.seed, state.answers)
         if result[0] == "done":
             state.step = "reveal"
+            state.reveals = state.get("reveals", 0) + 1
 
     if state.step == "reveal":
         ranked = quiz.replay(factors, state.seed, state.answers)[1]
         title, line = quiz.PERSONALITIES[ranked[0]]
-        st.markdown(f'<div class="panel persona"><div class="progress-label">YOUR TRAIL PERSONALITY</div>'
-                    f'<div class="type">{title}</div><div class="line">{line}</div></div>', unsafe_allow_html=True)
+        trail_progress("YOU MADE IT TO TOWN", 1.0)
+        cue = f"{state.seed}-{state.get('reveals', 0)}"
+        st.markdown(f'<div class="panel persona"><div class="drumroll"><div class="label">READING YOUR TRAIL...</div>'
+                    f'<div class="bar"><i></i></div></div>{confetti_html(cue)}'
+                    f'<div class="progress-label">YOUR TRAIL PERSONALITY</div>'
+                    f'<div class="type">{title}</div><div class="line">{line}</div>'
+                    f'<div class="fanfare-cue" data-cue="{cue}" hidden></div></div>', unsafe_allow_html=True)
         weights = quiz.weights_from_order(ranked)
         bars = "".join(
-            f'<div class="rankbar" style="animation-delay:{0.15 * i}s"><span>{i + 1}.</span><span>{name}</span>'
+            f'<div class="rankbar" style="animation-delay:{2.1 + 0.15 * i:.2f}s"><span>{i + 1}.</span><span>{name}</span>'
             f'<span class="fill" style="width:{weights[name] / len(ranked) * 100:.0f}%;'
             f'background:{FACTORS[name]["color"]}"></span></div>' for i, name in enumerate(ranked))
         st.markdown(f'<div class="panel">{bars}</div>', unsafe_allow_html=True)
@@ -353,8 +415,7 @@ def quiz_page():
         number = 2
     else:
         number = setup + len(state.answers) + 1
-    st.markdown(f'<div class="progress-label">QUESTION {number} OF UP TO {most}</div>', unsafe_allow_html=True)
-    st.progress(min(number / most, 1.0))
+    trail_progress(f"QUESTION {number} OF UP TO {most}", min((number - 1) / most, 1.0))
 
     if state.step == "family":
         st.markdown('<div class="question">First things first. Where does your family live?</div>',
