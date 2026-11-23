@@ -744,7 +744,8 @@ def method_section(order, family_geoid):
         "- The map draws Connecticut's old counties, so its nine planning regions appear gray.\n"
         "- The files cover different years, from 2018 to September 2026.\n"
         "- The trail theme is a homage to a classic computer game. The pixel wagon is original art.\n"
-        "- The music is an original 8-bit arrangement of Korobeiniki, a Russian folk song in the public domain. "
+        "- The music is an original 8-bit waltz arrangement of Sweet Betsy from Pike, an 1850s song about a wagon "
+        "crossing the plains, in the public domain. "
         "It starts on your first click or key press, and the speaker button mutes it.")
 
 

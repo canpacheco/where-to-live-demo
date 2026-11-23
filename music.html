@@ -1,5 +1,5 @@
-<!-- Trail music: an original 8-bit arrangement of "Korobeiniki", a Russian folk song in the public
-     domain, synthesized with the Web Audio API. The engine lives in the app page (the parent of this
+<!-- Trail music: an original 8-bit waltz arrangement of "Sweet Betsy from Pike", an 1850s American
+     song about a wagon crossing the plains, in the public domain, synthesized with the Web Audio API. The engine lives in the app page (the parent of this
      frame), so it survives Streamlit reruns. Browsers allow sound only after the visitor interacts
      with the page, so the music starts on the first click, tap, or key press anywhere on the page.
      The speaker button mutes and unmutes it. -->
@@ -36,21 +36,40 @@ const ENGINE = `
     const midi = 12 * (octave + 1) + NOTE[name[0]] + (sharp ? 1 : 0);
     return 440 * Math.pow(2, (midi - 69) / 12);
   }
+  // "Sweet Betsy from Pike", the 1850s song about a wagon crossing the plains to California, in
+  // 3/4 time: one bar is six eighth notes, and each melody entry is [note, length in eighths].
+  // Twenty bars, then the loop starts over.
   const MELODY = [
-    ["E5", 2], ["B4", 1], ["C5", 1], ["D5", 2], ["C5", 1], ["B4", 1],
-    ["A4", 2], ["A4", 1], ["C5", 1], ["E5", 2], ["D5", 1], ["C5", 1],
-    ["B4", 3], ["C5", 1], ["D5", 2], ["E5", 2],
-    ["C5", 2], ["A4", 2], ["A4", 2], [null, 2],
-    [null, 1], ["D5", 2], ["F5", 1], ["A5", 2], ["G5", 1], ["F5", 1],
-    ["E5", 3], ["C5", 1], ["E5", 2], ["D5", 1], ["C5", 1],
-    ["B4", 2], ["B4", 1], ["C5", 1], ["D5", 2], ["E5", 2],
-    ["C5", 2], ["A4", 2], ["A4", 2], [null, 2]
+    ["C5", 2], ["C5", 2], ["E5", 2],
+    ["G5", 2], ["G5", 2], ["F5", 2],
+    ["D5", 2], ["D5", 2], ["C5", 2],
+    ["C5", 6],
+    ["C5", 2], ["C5", 2], ["E5", 2],
+    ["G5", 2], ["C6", 6], ["B5", 2], ["G5", 2],
+    ["G5", 2], ["G5", 2], ["G5", 2],
+    ["G5", 4], [null, 2],
+    ["C6", 2], ["B5", 2], ["G5", 2],
+    ["E5", 2], ["F5", 2], ["G5", 1], ["A5", 1],
+    ["A5", 2], ["G5", 2], ["E5", 2],
+    ["C5", 1], ["D5", 1], ["E5", 4],
+    ["F5", 1], ["E5", 1], ["G5", 2], ["F5", 2],
+    ["D5", 2], ["D5", 2], ["C5", 2],
+    ["C5", 6],
+    [null, 4], ["G4", 2],
+    ["B4", 6],
+    ["D5", 2], ["C5", 2], ["C5", 2],
+    ["C5", 6]
   ];
-  const BASS = ["E2", "A2", "G#2", "A2", "D2", "C2", "G#2", "A2"];
-  const STEPS = 64, EIGHTH = 60 / 144 / 2;
+  // The waltz accompaniment, one chord a bar: a low root on beat 1 ("oom"), then the two upper
+  // notes of the chord, short, on beats 2 and 3 ("pah, pah").
+  const CHORDS = { C: ["C3", "E4", "G4"], F: ["F2", "A3", "C4"], G: ["G2", "B3", "D4"], G7: ["G2", "B3", "F4"] };
+  const HARMONY = ["C", "G7", "G7", "C", "C", "C", "G", "G7", "G", "C",
+                   "C", "F", "C", "G7", "G7", "C", "C", "G", "G7", "C"];
+  const BAR = 6, STEPS = BAR * HARMONY.length, EIGHTH = 60 / 150 / 2;
   const melodyAt = {};
   let s = 0;
   for (const [note, len] of MELODY) { if (note) melodyAt[s] = [note, len]; s += len; }
+  if (s !== STEPS) console.warn("trail music: the melody is " + s + " eighths long, the harmony " + STEPS);
 
   let muted = false;
   try { muted = localStorage.getItem("trailMusicMuted") === "1"; } catch (e) {}
@@ -111,9 +130,12 @@ const ENGINE = `
   function scheduler() {
     while (nextTime < ctx.currentTime + 0.3) {
       if (melodyAt[index]) { const [n, l] = melodyAt[index]; tone(freq(n), nextTime, l * EIGHTH, "square", 0.22, true); }
-      const root = BASS[Math.floor(index / 8)];
-      const oct = parseInt(root.slice(-1), 10) + (index % 2);
-      tone(freq(root.slice(0, -1) + oct), nextTime, EIGHTH, "triangle", 0.35, true);
+      const chord = CHORDS[HARMONY[Math.floor(index / BAR)]], beat = index % BAR;
+      if (beat === 0) tone(freq(chord[0]), nextTime, EIGHTH * 1.8, "triangle", 0.42, true);
+      else if (beat === 2 || beat === 4) {
+        tone(freq(chord[1]), nextTime, EIGHTH * 0.9, "square", 0.05, true);
+        tone(freq(chord[2]), nextTime, EIGHTH * 0.9, "square", 0.05, true);
+      }
       nextTime += EIGHTH;
       index = (index + 1) % STEPS;
     }
