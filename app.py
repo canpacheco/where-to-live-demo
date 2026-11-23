@@ -60,7 +60,11 @@ h2 {{ font-size: clamp(0.9rem, 1.8vw, 1.15rem) !important; line-height: 1.6 !imp
 h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .stMarkdown p, .stMarkdown li, label, .stCaption, [data-testid="stSidebar"] p {{
   font-family: 'VT323', monospace !important; font-size: 1.3rem !important; line-height: 1.25 !important; }}
-[data-testid="stTabs"] [role="tablist"] {{ gap: 16px; flex-wrap: wrap; margin: 18px 0 6px 0; overflow: visible !important; }}
+[data-testid="stTabs"] [role="tablist"] {{ gap: 16px; flex-wrap: wrap; margin: 34px 0 6px 0; overflow: visible !important; }}
+.st-key-spk_box {{ position: relative; height: 0; overflow: visible; z-index: 5; margin-bottom: -1rem; }}
+.st-key-spk_box [data-testid="stElementContainer"], .st-key-spk_box iframe {{
+  position: absolute !important; top: 16px; right: 16px; width: 46px !important; height: 46px !important; }}
+.banner.has-speaker .kicker, .banner.has-speaker h1 {{ padding-right: 56px; }}
 [data-testid="stTab"] {{ flex: 1 1 0; min-width: 150px; height: auto; padding: 16px 10px; justify-content: center;
   align-items: center; min-height: 64px; background: {PANEL}; border: 3px solid {GREEN}; box-shadow: 4px 4px 0 #050705;
   transition: transform 0.1s, box-shadow 0.1s; }}
@@ -72,7 +76,7 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 [data-testid="stTabs"] [role="tablist"] > :not([data-testid="stTab"]) {{ display: none; }}
 [data-testid="stTabs"] [role="tablist"], [data-testid="stTabs"] [role="tablist"]::after {{ border: 0 !important; }}
 [data-testid="stTabPanel"] {{ padding-top: 22px; }}
-.banner {{ border: 4px solid {GREEN}; background: {PANEL}; padding: 18px 22px 10px 22px; margin-bottom: 10px;
+.banner {{ border: 4px solid {GREEN}; background: {PANEL}; padding: 18px 22px 10px 22px; margin-bottom: 18px;
   box-shadow: 6px 6px 0 {INK}, 6px 6px 0 2px {GREEN}; }}
 .banner .kicker {{ font-family: 'Press Start 2P', monospace; color: {AMBER}; font-size: 0.75rem; }}
 .banner .tag {{ font-family: 'VT323', monospace; font-size: 1.45rem; color: {CREAM}; }}
@@ -288,19 +292,20 @@ def plotly_look(fig, height):
     return fig
 
 
-def banner(tagline, wagon=True):
+def banner(tagline, wagon=True, speaker=False):
     track = f'<div class="track"><div class="wagon">{WAGON_SVG}</div></div>' if wagon else ""
-    return (f'<div class="banner"><div class="kicker">THE GRADUATE TRAIL</div>'
+    return (f'<div class="banner{" has-speaker" if speaker else ""}"><div class="kicker">THE GRADUATE TRAIL</div>'
             f'<h1 style="margin:8px 0 2px 0;">Where should a finance graduate live?</h1>'
             f'<div class="tag">{tagline}</div>{track}</div>')
 
 
 def header(tagline, wagon=True, music=True):
     if music:
-        left, right = st.columns([14, 1])
-        left.markdown(banner(tagline, wagon), unsafe_allow_html=True)
-        with right:
+        # The speaker frame sits in a zero-height box just above the banner, pinned by CSS to the
+        # banner's top-right corner, so the banner spans the full width.
+        with st.container(key="spk_box"):
             st.iframe(MUSIC_HTML, height=46)
+        st.markdown(banner(tagline, wagon, speaker=True), unsafe_allow_html=True)
     else:
         # No music on this page: the engine loads out of sight for the pick and reveal sounds only.
         st.markdown(banner(tagline, wagon) + '<div class="no-music" hidden></div>', unsafe_allow_html=True)
