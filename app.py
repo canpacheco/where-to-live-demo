@@ -53,7 +53,7 @@ st.set_page_config(page_title="Where should a finance graduate live?", page_icon
 # ------------------------------------------------------------------ look and feel
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Nunito:wght@600;700;800&display=swap');
 h1, h2, h3, .pixel {{ font-family: 'Press Start 2P', monospace !important; letter-spacing: 0.02em; }}
 h1 {{ font-size: clamp(1.1rem, 2.6vw, 1.8rem) !important; line-height: 1.5 !important; color: {GREEN}; }}
 h2 {{ font-size: clamp(0.9rem, 1.8vw, 1.15rem) !important; line-height: 1.6 !important; color: {AMBER}; }}
@@ -106,14 +106,14 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .supplies .pips {{ display: inline-flex; gap: 3px; }}
 .supplies .pip {{ width: 10px; height: 10px; background: #2c3a28; display: inline-block; }}
 .supplies .pip.on {{ background: {GREEN}; }}
-.question {{ font-family: 'Press Start 2P', monospace; color: {CREAM}; font-size: clamp(0.85rem, 2vw, 1.2rem);
-  line-height: 1.7; margin: 18px 0 8px 0; animation: rise 0.4s ease-out both; }}
+.question {{ font-family: 'Nunito', sans-serif; font-weight: 800; color: {CREAM}; font-size: clamp(1.35rem, 2.6vw, 2rem);
+  line-height: 1.25; margin: 18px 0 12px 0; animation: rise 0.4s ease-out both; }}
 .progress-label {{ font-family: 'Press Start 2P', monospace; color: {AMBER}; font-size: 0.65rem; margin-top: 6px; }}
 [class*="st-key-pick_"] button {{ min-height: 150px; width: 100%; background: {PANEL}; border: 3px solid {CREAM};
   box-shadow: 5px 5px 0 #050705; animation: rise 0.45s ease-out both; transition: transform 0.1s, border-color 0.1s; }}
 [class*="st-key-pick_"] button:hover {{ border-color: {GREEN}; transform: translate(-2px, -2px); }}
-[class*="st-key-pick_"] button p {{ font-family: 'VT323', monospace !important; font-size: 1.7rem !important;
-  line-height: 1.2 !important; white-space: normal !important; color: {CREAM}; }}
+[class*="st-key-pick_"] button p {{ font-family: 'Nunito', sans-serif !important; font-weight: 700 !important;
+  font-size: 1.35rem !important; line-height: 1.35 !important; white-space: normal !important; color: {CREAM}; }}
 [class*="st-key-go_"] button {{ background: {GREEN}; border: 0; box-shadow: 4px 4px 0 #050705; }}
 [class*="st-key-go_"] button p {{ font-family: 'Press Start 2P', monospace !important; font-size: 0.75rem !important;
   color: {INK} !important; }}
@@ -122,9 +122,9 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .persona {{ text-align: center; padding: 20px; }}
 .persona .type {{ font-family: 'Press Start 2P', monospace; color: {GREEN}; font-size: clamp(1rem, 3vw, 1.8rem);
   margin: 14px 0; animation: rise 0.6s ease-out both; }}
-.persona .line {{ font-family: 'VT323', monospace; font-size: 1.6rem; color: {CREAM}; }}
-.rankbar {{ display: grid; grid-template-columns: 2.2em 13em 1fr; align-items: center; gap: 10px; margin: 6px 0;
-  font-family: 'VT323', monospace; font-size: 1.4rem; opacity: 0; animation: rise 0.4s ease-out forwards; }}
+.persona .line {{ font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 1.35rem; color: {CREAM}; }}
+.rankbar {{ display: grid; grid-template-columns: 2em 12em 1fr; align-items: center; gap: 10px; margin: 6px 0;
+  font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 1.15rem; opacity: 0; animation: rise 0.4s ease-out forwards; }}
 .rankbar .fill {{ height: 16px; background: {GREEN}; }}
 .tiles {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 10px 0 18px 0; }}
 .tile {{ border: 3px solid #3c5236; background: {PANEL}; padding: 10px 12px; box-shadow: 3px 3px 0 #050705; }}
@@ -315,7 +315,10 @@ def hit_the_trail():
 # ------------------------------------------------------------------ page 1, the quiz
 def quiz_page():
     st.markdown('<style>[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], '
-                '[data-testid="collapsedControl"] { display: none !important; }</style>', unsafe_allow_html=True)
+                '[data-testid="collapsedControl"] { display: none !important; } '
+                '.banner .tag, label, .stMarkdown p { font-family: "Nunito", sans-serif !important; '
+                'font-weight: 600 !important; font-size: 1.1rem !important; line-height: 1.4 !important; }'
+                '</style>', unsafe_allow_html=True)
     header("Answer about a dozen quick questions, and we will find the county that fits you. "
            "No wrong answers, only wrong turns at the river.", wagon=False)
     factors = quiz_factors()
@@ -561,22 +564,6 @@ def compare_section(table, ranked, order, weights, comfort, family_geoid):
     one = table[table["label"] == first].iloc[0]
     two = table[table["label"] == second].iloc[0]
 
-    tiles = []
-    for name in order:
-        column, fmt = FACTORS[name]["column"], FACTORS[name]["format"]
-        a, b = one[column], two[column]
-        win_a = win_b = False
-        if pd.notna(a) and pd.notna(b) and a != b:
-            a_better = (a > b) == FACTORS[name]["higher_is_better"]
-            win_a, win_b = a_better, not a_better
-        va = "no data" if pd.isna(a) else fmt.format(a)
-        vb = "no data" if pd.isna(b) else fmt.format(b)
-        tiles.append(f'<div class="tile"><div class="label">{FACTORS[name]["header"].upper()}</div>'
-                     f'<div class="v{" win" if win_a else ""}"><span class="n">{first.split(",")[0]}</span>'
-                     f'<span class="x">{va}</span></div>'
-                     f'<div class="v{" win" if win_b else ""}"><span class="n">{second.split(",")[0]}</span>'
-                     f'<span class="x">{vb}</span></div></div>')
-    st.markdown(f'<div class="tiles">{"".join(tiles)}</div>', unsafe_allow_html=True)
 
     top_left, top_right = st.columns(2)
     with top_left:
