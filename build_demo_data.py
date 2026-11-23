@@ -83,7 +83,7 @@ def noaa_file():
 with zipfile.ZipFile(SNAP / "census_gazetteer_counties_2025.zip") as z:
     gaz = pd.read_csv(io.BytesIO(z.read(z.namelist()[0])), sep="|", dtype={"GEOID": str})
 gaz.columns = [c.strip() for c in gaz.columns]
-t = gaz[["GEOID", "USPS", "NAME"]].copy()
+t = gaz[["GEOID", "USPS", "NAME", "INTPTLAT", "INTPTLONG"]].rename(columns={"INTPTLAT": "lat", "INTPTLONG": "lon"}).copy()
 
 pop = pd.read_csv(RAW / "census_popest_counties_2024.csv", encoding="latin-1", dtype=str)
 pop = pop[pop.SUMLEV == "050"].copy()
@@ -199,6 +199,9 @@ plt.close(fig)
 # ------------------------------------------------------------------ data files for the interactive charts
 by_state.rename(columns={"median": "median_rent", "count": "counties_with_rent"}).to_csv(
     DATA_DIR / "state_rent.csv")
+history = zil.set_index("GEOID")[month_cols].round(0)
+history.columns = [c[:7] for c in month_cols]
+history.to_csv(DATA_DIR / "rent_history.csv")
 two = series[["05007", "05143"]].rename(columns={"05007": "Benton County, AR", "05143": "Washington County, AR"})
 two.index.name = "month"
 two.to_csv(DATA_DIR / "rent_series.csv")
