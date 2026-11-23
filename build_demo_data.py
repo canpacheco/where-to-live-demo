@@ -11,6 +11,7 @@ Run from the FDA_Python repo root:
 Writes data/county_factors.csv and charts/*.png next to this script, then prints check numbers.
 """
 import io
+import json
 import os
 import re
 import urllib.request
@@ -202,7 +203,28 @@ two = series[["05007", "05143"]].rename(columns={"05007": "Benton County, AR", "
 two.index.name = "month"
 two.to_csv(DATA_DIR / "rent_series.csv")
 GEOJSON = HERE.parent.parent / "materials" / "data" / "us_counties_geojson.json"
-(DATA_DIR / "us_counties.json").write_bytes(GEOJSON.read_bytes())
+# Simplified shapes: the map is a few hundred pixels wide, so detail finer than about half a
+# kilometer is invisible, and the smaller file is sent to the browser on every redraw.
+from shapely.geometry import mapping, shape  # noqa: E402
+
+
+def round_coords(obj, digits=3):
+    if isinstance(obj, (list, tuple)):
+        if obj and isinstance(obj[0], (int, float)):
+            return [round(v, digits) for v in obj]
+        return [round_coords(v, digits) for v in obj]
+    return obj
+
+
+geo = json.loads(GEOJSON.read_text())
+for feature in geo["features"]:
+    simple = shape(feature["geometry"]).simplify(0.005, preserve_topology=True)
+    geometry = mapping(simple)
+    feature["geometry"] = {"type": geometry["type"], "coordinates": round_coords(geometry["coordinates"])}
+    feature["properties"] = {"NAME": feature["properties"].get("NAME")}
+(DATA_DIR / "us_counties.json").write_text(json.dumps(geo, separators=(",", ":")))
+print("map file", round(GEOJSON.stat().st_size / 1e6, 2), "MB ->",
+      round((DATA_DIR / "us_counties.json").stat().st_size / 1e6, 2), "MB")
 
 # ------------------------------------------------------------------ check numbers
 benton = t[t.GEOID == "05007"].iloc[0]
