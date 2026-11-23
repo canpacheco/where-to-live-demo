@@ -111,13 +111,14 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
   line-height: 1.25; margin: 18px 0 12px 0; animation: slidein 0.4s ease-out both; }}
 .progress-label {{ font-family: 'Press Start 2P', monospace; color: {AMBER}; font-size: 0.65rem; margin-top: 6px; }}
 [class*="st-key-pick_"] button {{ min-height: 150px; width: 100%; background: {PANEL}; border: 3px solid {CREAM};
-  box-shadow: 5px 5px 0 #050705; animation: slidein 0.45s ease-out 0.05s both; transition: transform 0.1s, border-color 0.1s; }}
+  box-shadow: 5px 5px 0 #050705; animation: slidein 0.45s ease-out 0.05s both; transition: transform 0.1s, border-color 0.1s, background 0.12s; }}
 [class*="st-key-pick_"][class*="_right"] button, [class*="st-key-pick_comfort_1"] button,
 [class*="st-key-pick_comfort_3"] button {{ animation-delay: 0.15s; }}
 [class*="st-key-pick_"] button:active {{ transform: translate(3px, 3px) scale(0.98); box-shadow: 1px 1px 0 #050705;
   border-color: {GREEN}; background: #24331F; }}
 @keyframes slidein {{ from {{ opacity: 0; transform: translateX(48px); }} to {{ opacity: 1; transform: none; }} }}
-[class*="st-key-pick_"] button:hover {{ border-color: {GREEN}; transform: translate(-2px, -2px); }}
+[class*="st-key-pick_"] button:hover {{ background: {GREEN}; border-color: {GREEN}; transform: translate(-2px, -2px); }}
+[class*="st-key-pick_"] button:hover p {{ color: {INK} !important; }}
 [class*="st-key-pick_"] button p {{ font-family: 'Pixelify Sans', sans-serif !important; font-weight: 500 !important;
   font-size: 1.4rem !important; line-height: 1.3 !important; white-space: normal !important; color: {CREAM}; }}
 [class*="st-key-go_"] button {{ background: {GREEN}; border: 0; box-shadow: 4px 4px 0 #050705; }}
