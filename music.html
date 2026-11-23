@@ -83,12 +83,13 @@ const ENGINE = `
     }
   }
   function playing() { return ctx.state === "running" && timer !== null; }
+  function musicAllowed() { return !document.querySelector(".no-music"); }
   function notify() { for (const f of listeners) { try { f(); } catch (e) {} } }
   function start() {
     if (muted || document.hidden) return;
     ctx.resume().then(() => {
       if (ctx.state !== "running") return;
-      if (timer === null) { nextTime = ctx.currentTime + 0.05; timer = setInterval(scheduler, 50); }
+      if (timer === null && musicAllowed()) { nextTime = ctx.currentTime + 0.05; timer = setInterval(scheduler, 50); }
       notify();
     }).catch(() => {});
   }
@@ -104,6 +105,7 @@ const ENGINE = `
   // still counts as an interaction, so check once a second until the music is running.
   const waiter = setInterval(() => {
     if (playing()) { clearInterval(waiter); return; }
+    if (!musicAllowed()) return;
     const active = navigator.userActivation ? navigator.userActivation.hasBeenActive : false;
     if (active && !muted) start();
   }, 1000);
@@ -134,6 +136,9 @@ const ENGINE = `
   new MutationObserver(() => {
     const cue = document.querySelector(".fanfare-cue");
     if (cue && cue.dataset.cue !== lastCue) { lastCue = cue.dataset.cue; fanfare(1.55); }
+    if (!musicAllowed() && timer !== null) { clearInterval(timer); timer = null; notify(); }
+    const active = navigator.userActivation ? navigator.userActivation.hasBeenActive : false;
+    if (musicAllowed() && timer === null && !muted && active) start();
   }).observe(document.body, { childList: true, subtree: true });
 
   window.__trailMusic = {

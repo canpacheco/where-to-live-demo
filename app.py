@@ -53,7 +53,7 @@ st.set_page_config(page_title="Where should a finance graduate live?", page_icon
 # ------------------------------------------------------------------ look and feel
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Pixelify+Sans:wght@400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Space+Mono:wght@400;700&display=swap');
 * {{ font-variant-ligatures: none; font-feature-settings: "liga" 0, "clig" 0; }}
 h1, h2, h3, .pixel {{ font-family: 'Press Start 2P', monospace !important; letter-spacing: 0.02em; }}
 h1 {{ font-size: clamp(1.1rem, 2.6vw, 1.8rem) !important; line-height: 1.5 !important; color: {GREEN}; }}
@@ -107,7 +107,9 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .supplies .pips {{ display: inline-flex; gap: 3px; }}
 .supplies .pip {{ width: 10px; height: 10px; background: #2c3a28; display: inline-block; }}
 .supplies .pip.on {{ background: {GREEN}; }}
-.question {{ font-family: 'Pixelify Sans', sans-serif; font-weight: 600; color: {CREAM}; font-size: clamp(1.4rem, 2.6vw, 2rem);
+.st-key-engine_only {{ position: absolute !important; width: 1px; height: 1px; overflow: hidden; opacity: 0;
+  pointer-events: none; }}
+.question {{ font-family: 'Space Mono', monospace; font-weight: 700; color: {CREAM}; font-size: clamp(1.2rem, 2.2vw, 1.7rem);
   line-height: 1.25; margin: 18px 0 12px 0; animation: slidein 0.4s ease-out both; }}
 .progress-label {{ font-family: 'Press Start 2P', monospace; color: {AMBER}; font-size: 0.65rem; margin-top: 6px; }}
 [class*="st-key-pick_"] button {{ min-height: 150px; width: 100%; background: {PANEL}; border: 3px solid {CREAM};
@@ -119,8 +121,8 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 @keyframes slidein {{ from {{ opacity: 0; transform: translateX(48px); }} to {{ opacity: 1; transform: none; }} }}
 [class*="st-key-pick_"] button:hover {{ background: {GREEN}; border-color: {GREEN}; transform: translate(-2px, -2px); }}
 [class*="st-key-pick_"] button:hover p {{ color: {INK} !important; }}
-[class*="st-key-pick_"] button p {{ font-family: 'Pixelify Sans', sans-serif !important; font-weight: 500 !important;
-  font-size: 1.4rem !important; line-height: 1.3 !important; white-space: normal !important; color: {CREAM}; }}
+[class*="st-key-pick_"] button p {{ font-family: 'Space Mono', monospace !important; font-weight: 400 !important;
+  font-size: 1.15rem !important; line-height: 1.45 !important; white-space: normal !important; color: {CREAM}; }}
 [class*="st-key-go_"] button {{ background: {GREEN}; border: 0; box-shadow: 4px 4px 0 #050705; }}
 [class*="st-key-go_"] button p {{ font-family: 'Press Start 2P', monospace !important; font-size: 0.75rem !important;
   color: {INK} !important; }}
@@ -129,7 +131,7 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .persona {{ text-align: center; padding: 20px; position: relative; min-height: 190px; }}
 .persona .type {{ font-family: 'Press Start 2P', monospace; color: {GREEN}; font-size: clamp(1rem, 3vw, 1.8rem);
   margin: 14px 0; animation: drop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) 1.6s both; }}
-.persona .line {{ font-family: 'Pixelify Sans', sans-serif; font-weight: 500; font-size: 1.45rem; color: {CREAM};
+.persona .line {{ font-family: 'Space Mono', monospace; font-weight: 400; font-size: 1.15rem; color: {CREAM};
   animation: rise 0.4s ease-out 1.95s both; }}
 @keyframes drop {{ from {{ opacity: 0; transform: translateY(-60px) scale(1.5); }} to {{ opacity: 1; transform: none; }} }}
 .drumroll {{ position: absolute; inset: 0; background: {PANEL}; display: flex; flex-direction: column; align-items: center;
@@ -146,8 +148,8 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
   animation: burst 1.4s cubic-bezier(0.1, 0.7, 0.3, 1) var(--delay) forwards; }}
 @keyframes burst {{ 0% {{ opacity: 1; transform: translate(0, 0) rotate(0deg); }}
   80% {{ opacity: 1; }} 100% {{ opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--r)); }} }}
-.rankbar {{ display: grid; grid-template-columns: 2em 12em 1fr; align-items: center; gap: 10px; margin: 6px 0;
-  font-family: 'Pixelify Sans', sans-serif; font-weight: 500; font-size: 1.3rem; opacity: 0; animation: rise 0.4s ease-out forwards; }}
+.rankbar {{ display: grid; grid-template-columns: 2em 15em 1fr; align-items: center; gap: 10px; margin: 6px 0;
+  font-family: 'Space Mono', monospace; font-weight: 400; font-size: 1.05rem; opacity: 0; animation: rise 0.4s ease-out forwards; }}
 .rankbar .fill {{ height: 16px; background: {GREEN}; animation: grow 0.6s ease-out both; animation-delay: inherit; }}
 @keyframes grow {{ from {{ width: 0; }} }}
 .trail {{ position: relative; height: 46px; margin: 6px 0 6px 0; border-bottom: 4px dashed #7a5a32; }}
@@ -289,11 +291,17 @@ def banner(tagline, wagon=True):
             f'<div class="tag">{tagline}</div>{track}</div>')
 
 
-def header(tagline, wagon=True):
-    left, right = st.columns([14, 1])
-    left.markdown(banner(tagline, wagon), unsafe_allow_html=True)
-    with right:
-        st.iframe(MUSIC_HTML, height=46)
+def header(tagline, wagon=True, music=True):
+    if music:
+        left, right = st.columns([14, 1])
+        left.markdown(banner(tagline, wagon), unsafe_allow_html=True)
+        with right:
+            st.iframe(MUSIC_HTML, height=46)
+    else:
+        # No music on this page: the engine loads out of sight for the pick and reveal sounds only.
+        st.markdown(banner(tagline, wagon) + '<div class="no-music" hidden></div>', unsafe_allow_html=True)
+        with st.container(key="engine_only"):
+            st.iframe(MUSIC_HTML, height=1)
 
 
 # ------------------------------------------------------------------ session state
@@ -373,11 +381,11 @@ def confetti_html(seed):
 def quiz_page():
     st.markdown('<style>[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], '
                 '[data-testid="collapsedControl"] { display: none !important; } '
-                '.banner .tag, label, .stMarkdown p { font-family: "Pixelify Sans", sans-serif !important; '
-                'font-weight: 400 !important; font-size: 1.25rem !important; line-height: 1.35 !important; }'
+                '.banner .tag, label, .stMarkdown p { font-family: "Space Mono", monospace !important; '
+                'font-weight: 400 !important; font-size: 1rem !important; line-height: 1.45 !important; }'
                 '</style>', unsafe_allow_html=True)
     header("Answer about a dozen quick questions, and we will find the county that fits you. "
-           "No wrong answers, only wrong turns at the river.", wagon=False)
+           "No wrong answers, only wrong turns at the river.", wagon=False, music=False)
     factors = quiz_factors()
     setup = 2
     most = setup + quiz.most_questions(quiz.FACTORS if state.step == "family" else factors,
