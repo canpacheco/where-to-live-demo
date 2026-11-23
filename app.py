@@ -15,7 +15,6 @@ from pathlib import Path
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from streamlit_sortables import sort_items
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -107,6 +106,11 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
 .supplies .pips {{ display: inline-flex; gap: 3px; }}
 .supplies .pip {{ width: 10px; height: 10px; background: #2c3a28; display: inline-block; }}
 .supplies .pip.on {{ background: {GREEN}; }}
+.strip {{ display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }}
+.strip .persona-name {{ font-family: 'Press Start 2P', monospace; color: {GREEN}; font-size: 0.8rem; }}
+.strip .chips {{ display: flex; flex-wrap: wrap; gap: 6px; }}
+.strip .chip {{ font-family: 'Space Mono', monospace; font-size: 0.85rem; color: {CREAM}; border: 2px solid #3c5236;
+  padding: 2px 8px; background: {PANEL}; }}
 .st-key-engine_only {{ position: absolute !important; width: 1px; height: 1px; overflow: hidden; opacity: 0;
   pointer-events: none; }}
 .question {{ font-family: 'Space Mono', monospace; font-weight: 700; color: {CREAM}; font-size: clamp(1.2rem, 2.2vw, 1.7rem);
@@ -312,6 +316,17 @@ def start_quiz():
     st.session_state.answers = []
     st.session_state.family = None
     st.session_state.comfort = (55, 75)
+    st.session_state.retake = False
+
+
+def retake_quiz():
+    """A new set of trade-off questions. The family and comfy-day answers are kept."""
+    st.session_state.page = "quiz"
+    st.session_state.step = "tradeoffs"
+    st.session_state.seed = random.randint(0, 10**9)
+    st.session_state.answers = []
+    st.session_state.retake = True
+    st.session_state.trail_fraction = 0.0
 
 
 if "page" not in st.session_state:
@@ -345,7 +360,7 @@ def go_back():
         state.answers.pop()
     elif state.step == "tradeoffs" and state.answers:
         state.answers.pop()
-    elif state.step == "tradeoffs":
+    elif state.step == "tradeoffs" and not state.get("retake"):
         state.step = "comfort"
     elif state.step == "comfort":
         state.step = "family"
@@ -378,16 +393,19 @@ def confetti_html(seed):
     return '<div class="confetti">' + "".join(pieces) + "</div>"
 
 
+HIDE_SIDEBAR = ('[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], '
+                '[data-testid="collapsedControl"] { display: none !important; } ')
+
+
 def quiz_page():
-    st.markdown('<style>[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], '
-                '[data-testid="collapsedControl"] { display: none !important; } '
+    st.markdown('<style>' + HIDE_SIDEBAR +
                 '.banner .tag, label, .stMarkdown p { font-family: "Space Mono", monospace !important; '
                 'font-weight: 400 !important; font-size: 1rem !important; line-height: 1.45 !important; }'
                 '</style>', unsafe_allow_html=True)
     header("Answer about a dozen quick questions, and we will find the county that fits you. "
            "No wrong answers, only wrong turns at the river.", wagon=False, music=False)
     factors = quiz_factors()
-    setup = 2
+    setup = 0 if state.get("retake") else 2
     most = setup + quiz.most_questions(quiz.FACTORS if state.step == "family" else factors,
                                        state.seed, state.answers)
 
@@ -463,7 +481,8 @@ def quiz_page():
     n = len(state.answers)
     left.button(cards[left_factor], key=f"pick_{n}_left", on_click=answer, args=(left_factor,), width="stretch")
     right.button(cards[right_factor], key=f"pick_{n}_right", on_click=answer, args=(right_factor,), width="stretch")
-    st.button("Back", key=f"back_{n}", on_click=go_back)
+    if n > 0 or not state.get("retake"):
+        st.button("Back", key=f"back_{n}", on_click=go_back)
 
 
 # ------------------------------------------------------------------ page 2, the results
@@ -473,41 +492,11 @@ def results_page():
     persona, _ = quiz.PERSONALITIES[quiz_order[0]]
     family_geoid = state.family
 
-    with st.sidebar:
-        st.markdown(f'<div class="progress-label">YOUR TRAIL PERSONALITY</div>'
-                    f'<div class="pixel" style="color:{GREEN};font-size:0.8rem;margin:6px 0 12px 0;">{persona}</div>',
-                    unsafe_allow_html=True)
-        st.markdown("## Outfit your wagon")
-        st.write("Your quiz put the factors in this order. Drag them to fine-tune. The top one matters most.")
-        order = sort_items(quiz_order, direction="vertical", key=f"order_{state.seed}_{len(state.answers)}",
-                           custom_style=f"""
-            .sortable-component {{ border: 3px solid {GREEN}; background-color: {PANEL}; padding: 6px; counter-reset: item; }}
-            .sortable-container {{ background-color: {PANEL}; counter-reset: item; }}
-            .sortable-container-body {{ background-color: {PANEL}; }}
-            .sortable-item, .sortable-item:hover {{ background-color: #24331F; color: {CREAM}; border: 2px solid {GREEN};
-                font-family: 'Courier New', monospace; font-weight: bold; font-size: 15px; }}
-            .sortable-item::before {{ content: counter(item) ". "; counter-increment: item; color: {AMBER}; }}
-            """)
-        if not order or sorted(order) != sorted(quiz_order):
-            order = quiz_order
-        weights = quiz.weights_from_order(order)
-        rows_html = []
-        for name in order:
-            pips = "".join(f'<span class="pip{" on" if k < weights[name] else ""}"></span>' for k in range(len(order)))
-            rows_html.append(f'<div class="row"><span>{name}</span><span class="pips">{pips}</span></div>')
-        st.markdown('<div class="supplies"><div style="color:#F2A541">Weight of each factor</div>'
-                    + "".join(rows_html) + "</div>", unsafe_allow_html=True)
-        if family_geoid:
-            home = counties.loc[counties["GEOID"] == family_geoid, "label"].iloc[0]
-            st.write(f"Family lives in {home}.")
-
-        st.markdown("## Must-haves")
-        comfort = st.slider("A comfortable month averages between (degrees F)", 20, 100, state.comfort,
-                            key=f"comfort_{state.seed}")
-        states = st.multiselect("States you would consider (leave empty for all)", sorted(counties["USPS"].unique()))
-        place = st.selectbox("Kind of place", PLACE_CHOICES)
-        top_n = st.slider("Counties to show", 5, 50, 10)
-        st.button("Retake the quiz", on_click=start_quiz, width="stretch")
+    order = quiz_order
+    weights = quiz.weights_from_order(order)
+    comfort = state.comfort
+    states, place, top_n = [], "No preference", 10
+    st.markdown("<style>" + HIDE_SIDEBAR + "</style>", unsafe_allow_html=True)
 
     table = counties.copy()
     table["comfortable_months"] = comfortable_months(table, comfort[0], comfort[1])
@@ -518,6 +507,12 @@ def results_page():
     ranked, in_scope = rank_counties(table, weights, order, states, place)
 
     header("Rank what matters, and see which county your wagon reaches. Try not to die of rent burden.")
+    chips = "".join(f'<span class="chip">{i + 1}. {name}</span>' for i, name in enumerate(order))
+    strip_left, strip_right = st.columns([5, 1], vertical_alignment="center")
+    strip_left.markdown(f'<div class="strip"><span class="progress-label">YOUR TRAIL PERSONALITY</span>'
+                        f'<span class="persona-name">{persona}</span><span class="chips">{chips}</span></div>',
+                        unsafe_allow_html=True)
+    strip_right.button("RETAKE THE QUIZ", key="go_retake", on_click=retake_quiz, width="stretch")
     ranking_tab, compare_tab, method_tab = st.tabs(["Ranking", "Compare two counties", "How this works"])
 
     with ranking_tab:
@@ -544,7 +539,7 @@ def contribution_chart(rows, order, weights, title, height):
 def ranking_section(ranked, in_scope, order, weights, comfort, top_n, family_geoid):
     if ranked.empty:
         st.markdown('<div class="hazard"><b>YOUR PARTY HAS RUN OUT OF COUNTIES.</b><br>'
-                    'No county matches your must-haves. Try more states or another kind of place.</div>',
+                    'No county has a number for every one of your factors.</div>',
                     unsafe_allow_html=True)
         return
     best = ranked.iloc[0]
@@ -660,7 +655,7 @@ def compare_section(table, ranked, order, weights, comfort, family_geoid):
             st.plotly_chart(contribution_chart(both, order, weights, "Fit score, factor by factor", 400),
                             width="stretch")
             st.caption("Each bar is one county's fit score, split into the points each factor adds. A county that "
-                       "is missing a number or falls outside your must-haves has no bar.")
+                       "is missing a number for one of your factors has no bar.")
 
     bottom_left, bottom_right = st.columns(2)
     with bottom_left:
@@ -732,9 +727,9 @@ def method_section(order, family_geoid):
              "and the side of each card are random.")
     st.markdown("### How your order becomes weights")
     st.write("The top factor gets the largest weight, 6 with six factors or 5 with five, and each factor below it "
-             "gets one less, down to 1 for the last. You can drag the factors in the sidebar to change the order.")
+             "gets one less, down to 1 for the last. Retake the quiz to get a new set of questions and a new order.")
     st.markdown("### How the fit score is computed")
-    st.write("The site keeps the counties that meet your must-haves, then drops every county with no number for one "
+    st.write("The site drops every county with no number for one "
              "of your factors. On each factor, each remaining county gets a percentile score from 0 to 100, and the "
              "best county scores 100. The fit score is the weighted average of the percentile scores.")
     st.markdown("### Caveats")
