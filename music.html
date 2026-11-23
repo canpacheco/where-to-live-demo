@@ -1,8 +1,8 @@
 <!-- Trail music: an original 8-bit arrangement of "Korobeiniki", a Russian folk song in the public
      domain, synthesized with the Web Audio API. The engine lives in the app page (the parent of this
      frame), so it survives Streamlit reruns. Browsers allow sound only after the visitor interacts
-     with the page, so the music starts on the first click, tap, or key press anywhere on the page,
-     or at once when the browser already allows it. The speaker button mutes and unmutes it. -->
+     with the page, so the music starts on the first click, tap, or key press anywhere on the page.
+     The speaker button mutes and unmutes it. -->
 <style>
   html, body { margin: 0; background: transparent; }
   #spk { width: 40px; height: 40px; border: 0; padding: 0; cursor: pointer; background: #8BE04E;
@@ -55,90 +55,189 @@ const ENGINE = `
   let muted = false;
   try { muted = localStorage.getItem("trailMusicMuted") === "1"; } catch (e) {}
   const AC = window.AudioContext || window.webkitAudioContext;
-  const ctx = new AC();
-  const master = ctx.createGain();
-  master.gain.value = 0.12;
-  master.connect(ctx.destination);
-  let timer = null, nextTime = 0, index = 0;
+  // The audio graph: music notes -> musicBus (fades) -> lowpass (softens the square waves) -> master.
+  // Blips, the drumroll, and the fanfare go straight to master, so silencing the music never cuts them.
+  // The context is made on the first interaction (or first sound), not at load: a context made
+  // before the visitor does anything starts blocked, and Chrome logs a warning about it.
+  let ctx = null, master = null, musicBus = null;
+  let timer = null, nextTime = 0, index = 0, everStarted = false, primed = false, suspendTimer = null;
+  const voices = new Set();   // music notes that are queued or sounding
   const listeners = [];
 
-  function tone(f, start, dur, type, level) {
+  function sticky() { return navigator.userActivation ? navigator.userActivation.hasBeenActive : false; }
+  function calm() { return Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }
+  function ready(gesture) {
+    if (ctx) return true;
+    if (!AC || !(gesture || sticky())) return false;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = 0.12;
+    master.connect(ctx.destination);
+    const soften = ctx.createBiquadFilter();
+    soften.type = "lowpass"; soften.frequency.value = 6000; soften.Q.value = 0;
+    soften.connect(master);
+    musicBus = ctx.createGain();
+    musicBus.gain.value = 0;
+    musicBus.connect(soften);
+    return true;
+  }
+  // iOS Safari unlocks sound only when a sound starts inside a gesture, so the first gesture plays
+  // one silent sample.
+  function prime() {
+    if (primed || !ctx) return;
+    primed = true;
+    try {
+      const src = ctx.createBufferSource();
+      src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      src.connect(ctx.destination);
+      src.onended = () => src.disconnect();
+      src.start(0);
+    } catch (e) {}
+  }
+
+  function tone(f, start, dur, type, level, music) {
     const osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.type = type; osc.frequency.value = f;
     gain.gain.setValueAtTime(0, start);
     gain.gain.linearRampToValueAtTime(level, start + 0.01);
     gain.gain.setValueAtTime(level, start + dur * 0.8);
     gain.gain.linearRampToValueAtTime(0, start + dur * 0.95);
-    osc.connect(gain).connect(master);
+    osc.connect(gain).connect(music ? musicBus : master);
+    const voice = { osc: osc, end: start + dur };
+    if (music) voices.add(voice);
+    osc.onended = () => { voices.delete(voice); osc.disconnect(); gain.disconnect(); };
     osc.start(start); osc.stop(start + dur);
   }
   function scheduler() {
     while (nextTime < ctx.currentTime + 0.3) {
-      if (melodyAt[index]) { const [n, l] = melodyAt[index]; tone(freq(n), nextTime, l * EIGHTH, "square", 0.22); }
+      if (melodyAt[index]) { const [n, l] = melodyAt[index]; tone(freq(n), nextTime, l * EIGHTH, "square", 0.22, true); }
       const root = BASS[Math.floor(index / 8)];
       const oct = parseInt(root.slice(-1), 10) + (index % 2);
-      tone(freq(root.slice(0, -1) + oct), nextTime, EIGHTH, "triangle", 0.35);
+      tone(freq(root.slice(0, -1) + oct), nextTime, EIGHTH, "triangle", 0.35, true);
       nextTime += EIGHTH;
       index = (index + 1) % STEPS;
     }
   }
-  function playing() { return ctx.state === "running" && timer !== null; }
+  // Ends every queued or sounding music note by audio time "at".
+  function cut(at) {
+    for (const v of voices) {
+      if (v.end > at) { try { v.osc.stop(at); } catch (e) {} v.end = at; }
+    }
+  }
+  // Stops the music: fades the music bus out, ends the queued notes at the end of the fade, and
+  // (when asked) suspends the context once the fade is done.
+  function silence(fade, suspend) {
+    if (timer !== null) { clearInterval(timer); timer = null; }
+    clearTimeout(suspendTimer); suspendTimer = null;
+    if (!ctx) return;
+    const now = ctx.currentTime, g = musicBus.gain;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.setTargetAtTime(0, now, fade / 4);
+    cut(now + fade);
+    if (suspend) {
+      suspendTimer = setTimeout(() => {
+        suspendTimer = null;
+        if (timer === null) ctx.suspend().catch(() => {});
+      }, fade * 1000 + 60);
+    }
+  }
+  function playing() { return ctx !== null && ctx.state === "running" && timer !== null; }
   function musicAllowed() { return !document.querySelector(".no-music"); }
   function notify() { for (const f of listeners) { try { f(); } catch (e) {} } }
-  function start() {
+  function start(gesture) {
     if (muted || document.hidden) return;
+    if (!ready(gesture)) return;
+    if (gesture) prime();
+    clearTimeout(suspendTimer); suspendTimer = null;
     ctx.resume().then(() => {
       if (ctx.state !== "running") return;
-      if (timer === null && musicAllowed()) { nextTime = ctx.currentTime + 0.05; timer = setInterval(scheduler, 50); }
+      if (timer === null && musicAllowed() && !muted && !document.hidden) {
+        const now = ctx.currentTime, g = musicBus.gain;
+        // Any note left from a fade still under way ends first; the new stream fades in after it.
+        g.cancelScheduledValues(now);
+        g.setValueAtTime(g.value, now);
+        g.linearRampToValueAtTime(0, now + 0.03);
+        cut(now + 0.03);
+        nextTime = now + 0.1;
+        g.setValueAtTime(0, nextTime - 0.01);
+        g.linearRampToValueAtTime(1, nextTime + (everStarted ? 0.2 : 1.0));
+        everStarted = true;
+        scheduler();
+        timer = setInterval(scheduler, 50);
+      }
       notify();
     }).catch(() => {});
   }
   function stop() {
-    if (timer !== null) { clearInterval(timer); timer = null; }
-    ctx.suspend().catch(() => {});
+    silence(0.1, true);
     notify();
   }
-  const unlock = () => start();
-  ["pointerdown", "keydown", "touchstart"].forEach(t => document.addEventListener(t, unlock, true));
-  document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); else start(); });
+  // Any press, tap, or key unlocks the sound. A touch pointerdown alone does not count as a gesture
+  // on iOS, hence the list. The speaker button is left to toggle(), which starts the music itself;
+  // starting it here first would make that same click mute it.
+  function unlock(e) {
+    const t = e.target;
+    if (t && t.closest && t.closest("#spk")) return;
+    start(true);
+  }
+  ["pointerdown", "pointerup", "touchend", "keydown", "click"].forEach(t => document.addEventListener(t, unlock, true));
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); else start(false); });
   // A first click inside another frame (the drag list) never reaches this page's listeners, but it
   // still counts as an interaction, so check once a second until the music is running.
   const waiter = setInterval(() => {
     if (playing()) { clearInterval(waiter); return; }
     if (!musicAllowed()) return;
-    const active = navigator.userActivation ? navigator.userActivation.hasBeenActive : false;
-    if (active && !muted) start();
+    if (sticky() && !muted) start(false);
   }, 1000);
 
-  // Sound effects, silenced by the same mute as the music.
-  function blip() {
-    if (muted) return;
+  // Sound effects, silenced by the same mute as the music. data-sound="back" plays a falling blip,
+  // data-sound="soft" a quiet tick, and anything else the usual rising blip.
+  function blip(kind) {
+    if (muted || !ready(true)) return;
+    const notes = kind === "back" ? [[1319, 0, 0.07, 0.24], [988, 0.07, 0.1, 0.24]]
+      : kind === "soft" ? [[880, 0, 0.05, 0.12]]
+      : [[988, 0, 0.07, 0.24], [1319, 0.07, 0.1, 0.24]];
     ctx.resume().then(() => {
       const t = ctx.currentTime + 0.01;
-      tone(988, t, 0.07, "square", 0.3);
-      tone(1319, t + 0.07, 0.1, "square", 0.3);
+      for (const [f, at, d, level] of notes) tone(f, t + at, d, "square", level, false);
     }).catch(() => {});
   }
-  function fanfare(delay) {
-    if (muted) return;
+  // The reveal: ten rising drum ticks, one per step of the 1.4 s loading bar (steps(10), so a step
+  // every 0.14 s), then the fanfare as the title lands. With reduced motion the page shows the
+  // reveal at once, so the fanfare plays at once and the ticks are left out.
+  function fanfare() {
+    if (muted || !ready(false)) return;
+    const asked = performance.now(), still = calm();
     ctx.resume().then(() => {
-      const t = ctx.currentTime + delay;
+      // A context that waits for a gesture (a reload on the reveal page) would otherwise play the
+      // fanfare after the next click, on top of the next page.
+      if (ctx.state !== "running" || performance.now() - asked > 400) return;
+      // t0 is the audio time that reaches the speakers at the moment the cue appeared, so the ticks
+      // land on the bar's steps despite the output latency.
+      const o = ctx.getOutputTimestamp ? ctx.getOutputTimestamp() : null;
+      const t0 = o && o.performanceTime > 0 ? o.contextTime + (asked - o.performanceTime) / 1000 : ctx.currentTime;
+      if (!still) {
+        for (let k = 1; k <= 10; k++) {
+          const at = t0 + 0.14 * k;
+          if (at > ctx.currentTime) tone(110 * Math.pow(2, (k - 1) / 9), at, 0.05, "triangle", 0.05, false);
+        }
+      }
       const notes = [[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.42], [784, 0.12], [1047, 0.6]];
-      let at = t;
-      for (const [f, d] of notes) { tone(f, at, d, "square", 0.32); tone(f / 2, at, d, "triangle", 0.4); at += d; }
+      let at = Math.max(t0 + (still ? 0.1 : 1.55), ctx.currentTime + 0.02);
+      for (const [f, d] of notes) { tone(f, at, d, "square", 0.32, false); tone(f / 2, at, d, "triangle", 0.4, false); at += d; }
     }).catch(() => {});
   }
   document.addEventListener("click", (e) => {
     const hit = e.target && e.target.closest && e.target.closest('[class*="st-key-pick_"], [class*="st-key-go_"]');
-    if (hit) { start(); blip(); }
+    if (hit) { start(true); blip(hit.dataset ? hit.dataset.sound : undefined); }
   }, true);
   let lastCue = null;
   new MutationObserver(() => {
     const cue = document.querySelector(".fanfare-cue");
-    if (cue && cue.dataset.cue !== lastCue) { lastCue = cue.dataset.cue; fanfare(1.55); }
-    if (!musicAllowed() && timer !== null) { clearInterval(timer); timer = null; notify(); }
-    const active = navigator.userActivation ? navigator.userActivation.hasBeenActive : false;
-    if (musicAllowed() && timer === null && !muted && active) start();
+    if (cue && cue.dataset.cue !== lastCue) { lastCue = cue.dataset.cue; fanfare(); }
+    if (!musicAllowed() && timer !== null) { silence(0.15, false); index = 0; notify(); }
+    if (musicAllowed() && timer === null && !muted && sticky()) start(false);
   }).observe(document.body, { childList: true, subtree: true });
 
   window.__trailMusic = {
@@ -146,14 +245,14 @@ const ENGINE = `
     isPlaying: playing,
     onChange: f => listeners.push(f),
     toggle: () => {
-      if (!muted && !playing()) { start(); return; }
+      if (!muted && !playing()) { start(true); return; }
       muted = !muted;
       try { localStorage.setItem("trailMusicMuted", muted ? "1" : "0"); } catch (e) {}
-      if (muted) stop(); else start();
+      if (muted) stop(); else start(true);
       notify();
     }
   };
-  start();
+  start(false);
 })();
 `;
 
