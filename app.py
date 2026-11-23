@@ -129,7 +129,7 @@ h3 {{ font-size: 0.85rem !important; line-height: 1.6 !important; }}
   font-size: 1.15rem !important; line-height: 1.45 !important; white-space: normal !important; color: {CREAM}; }}
 [class*="st-key-go_"] button {{ background: {GREEN}; border: 0; box-shadow: 4px 4px 0 #050705; }}
 [class*="st-key-go_"] button p {{ font-family: 'Press Start 2P', monospace !important; font-size: 0.75rem !important;
-  color: {INK} !important; }}
+  color: {INK} !important; white-space: normal !important; line-height: 1.5 !important; text-align: center; }}
 [class*="st-key-go_"] button:disabled {{ background: #2c3a28; box-shadow: none; }}
 [class*="st-key-go_"] button:disabled p {{ color: #7d8f76 !important; }}
 .persona {{ text-align: center; padding: 20px; position: relative; min-height: 190px; }}
@@ -508,7 +508,7 @@ def results_page():
 
     header("Rank what matters, and see which county your wagon reaches. Try not to die of rent burden.")
     chips = "".join(f'<span class="chip">{i + 1}. {name}</span>' for i, name in enumerate(order))
-    strip_left, strip_right = st.columns([5, 1], vertical_alignment="center")
+    strip_left, strip_right = st.columns([4, 1], vertical_alignment="center")
     strip_left.markdown(f'<div class="strip"><span class="progress-label">YOUR TRAIL PERSONALITY</span>'
                         f'<span class="persona-name">{persona}</span><span class="chips">{chips}</span></div>',
                         unsafe_allow_html=True)
