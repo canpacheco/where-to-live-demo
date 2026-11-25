@@ -46,6 +46,26 @@ FACTORS = {
                "format": "{:,.0f} mi", "table_format": "%,.0f", "color": CREAM},
 }
 PLACE_CHOICES = ["No preference", "A metro area", "A smaller city", "Outside any metro or micro area"]
+# The Census Bureau's four regions. Puerto Rico belongs to none, so it shows only under All.
+REGIONS = {
+    "Northeast": ["CT", "ME", "MA", "NH", "RI", "VT", "NJ", "NY", "PA"],
+    "Midwest": ["IL", "IN", "MI", "OH", "WI", "IA", "KS", "MN", "MO", "NE", "ND", "SD"],
+    "South": ["DE", "DC", "FL", "GA", "MD", "NC", "SC", "VA", "WV", "AL", "KY", "MS", "TN", "AR", "LA", "OK", "TX"],
+    "West": ["AZ", "CO", "ID", "MT", "NV", "NM", "UT", "WY", "AK", "CA", "HI", "OR", "WA"],
+}
+SHOW_COUNTS = [10, 15, 20, 50]
+CHART_MAX = 20  # the "what drives" chart stops at 20 bars, so it stays readable
+STATE_NAMES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado",
+    "CT": "Connecticut", "DE": "Delaware", "DC": "the District of Columbia", "FL": "Florida", "GA": "Georgia",
+    "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky",
+    "LA": "Louisiana", "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota",
+    "MS": "Mississippi", "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire",
+    "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York", "NC": "North Carolina", "ND": "North Dakota",
+    "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania", "PR": "Puerto Rico",
+    "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas",
+    "UT": "Utah", "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming"}
 
 st.set_page_config(page_title="Where should a finance graduate live?", page_icon="🐂", layout="wide")
 
@@ -510,6 +530,7 @@ def results_page():
         home_row = table[table["GEOID"] == family_geoid].iloc[0]
         table["miles_from_family"] = miles_between(home_row["lat"], home_row["lon"], table["lat"], table["lon"])
     ranked, in_scope = rank_counties(table, weights, order, states, place)
+    ranked["us_rank"] = ranked["rank"]
 
     header("Rank what matters, and see which county your wagon reaches. Try not to die of rent burden.")
     chips = "".join(f'<span class="chip">{i + 1}. {name}</span>' for i, name in enumerate(order))
@@ -521,11 +542,43 @@ def results_page():
     ranking_tab, compare_tab, method_tab = st.tabs(["Ranking", "Compare two counties", "How this works"])
 
     with ranking_tab:
-        ranking_section(ranked, in_scope, order, weights, comfort, top_n, family_geoid)
+        codes, place_name, top_n = filter_bar(sorted(counties["USPS"].unique()))
+        view = ranked[ranked["USPS"].isin(codes)].copy()
+        view["rank"] = range(1, len(view) + 1)
+        ranking_section(view, in_scope[in_scope["USPS"].isin(codes)], order, weights, comfort, top_n, family_geoid,
+                        place_name, len(codes) < len(counties["USPS"].unique()), table)
     with compare_tab:
         compare_section(table, ranked, order, weights, comfort, family_geoid)
     with method_tab:
         method_section(order, family_geoid)
+
+
+def clear_state_filter():
+    st.session_state.f_state = None
+
+
+def filter_bar(all_codes):
+    """Region, state and show-count controls. They narrow the list; every county keeps its national fit score."""
+    for key, default in (("f_region", "All"), ("f_state", None), ("f_show", 10)):
+        if key not in st.session_state:
+            st.session_state[key] = default
+    if st.session_state.f_region not in ["All", *REGIONS]:
+        st.session_state.f_region = "All"
+    with st.container(border=True):
+        col_region, col_state, col_show = st.columns([5, 3, 3], vertical_alignment="bottom")
+        region = col_region.segmented_control("REGION", ["All", *REGIONS], key="f_region", on_change=clear_state_filter,
+                                              selection_mode="single") or "All"
+        options = [c for c in all_codes if region == "All" or c in REGIONS[region]]
+        if st.session_state.f_state not in options:
+            st.session_state.f_state = None
+        us_state = col_state.selectbox("STATE", options, key="f_state", index=None,
+                                       placeholder="All states" if region == "All" else f"All of the {region}")
+        top_n = col_show.segmented_control("SHOW", SHOW_COUNTS, key="f_show", selection_mode="single") or 10
+    if us_state:
+        return [us_state], STATE_NAMES.get(us_state, us_state), top_n
+    if region == "All":
+        return list(all_codes), "the US", top_n
+    return REGIONS[region], f"the {region}", top_n
 
 
 def contribution_chart(rows, order, weights, title, height):
@@ -541,18 +594,20 @@ def contribution_chart(rows, order, weights, title, height):
     return plotly_look(fig, height).update_layout(title=title)
 
 
-def ranking_section(ranked, in_scope, order, weights, comfort, top_n, family_geoid):
+def ranking_section(ranked, in_scope, order, weights, comfort, top_n, family_geoid, place_name, filtered, table_all):
     if ranked.empty:
         st.markdown('<div class="hazard"><b>YOUR PARTY HAS RUN OUT OF COUNTIES.</b><br>'
-                    'No county has a number for every one of your factors.</div>',
+                    f'No county in {place_name} has a number for every one of your factors.</div>',
                     unsafe_allow_html=True)
         return
+    show_n = min(top_n, len(ranked))
+    chart_n = min(show_n, CHART_MAX)
     best = ranked.iloc[0]
     line1, line2 = "YOUR WAGON HAS REACHED", best["label"].upper()
     st.markdown(f'<div class="panel"><div class="arrived" style="--n:{len(line1)};--d:0.2s">{line1}</div>'
                 f'<div class="arrived last" style="--n:{len(line2)};--d:1.3s">{line2}</div>'
                 f'<div class="supplies" style="margin-top:8px;">Fit score {best["fit_score"]:.1f} out of 100, '
-                f'the best of {len(ranked):,} counties on your trail.</div></div>', unsafe_allow_html=True)
+                f'the best of {len(ranked):,} counties on your trail in {place_name}.</div></div>', unsafe_allow_html=True)
 
     cards = []
     for i, (_, row) in enumerate(ranked.head(3).iterrows()):
@@ -567,10 +622,10 @@ def ranking_section(ranked, in_scope, order, weights, comfort, top_n, family_geo
             f'<div class="line">Strongest on {strongest.lower()}</div></div>')
     st.markdown(f'<div class="podium">{"".join(cards)}</div>', unsafe_allow_html=True)
 
-    st.markdown("## What drives your top 10")
-    st.plotly_chart(contribution_chart(ranked.head(10), order, weights, "Why each county made your top 10", 470),
-                    width="stretch")
-    st.caption("Each bar is one of your top ten counties, split into the points each factor adds to its fit score. "
+    st.markdown(f"## What drives your top {chart_n}")
+    st.plotly_chart(contribution_chart(ranked.head(chart_n), order, weights, f"Why each county made your top {chart_n}",
+                                       max(300, 140 + 33 * chart_n)), width="stretch")
+    st.caption(f"Each bar is one of your top {chart_n} counties, split into the points each factor adds to its fit score. "
                "A longer piece means that factor helps the county more. The scores come from your answers and the "
                "county data described under How this works.")
 
@@ -580,15 +635,24 @@ def ranking_section(ranked, in_scope, order, weights, comfort, top_n, family_geo
         colorscale=[[0, "#1f2b1c"], [0.5, "#5a8f3a"], [1, GREEN]], zmin=0, zmax=100,
         marker_line_width=0, text=ranked["label"],
         hovertemplate="%{text}<br>Fit score %{z:.1f}<extra></extra>", colorbar=dict(title="Fit score")))
+    if filtered:
+        outside = table_all[~table_all["USPS"].isin(in_scope["USPS"].unique())]
+        fig.add_trace(go.Choropleth(
+            geojson=load_geojson(stamp("us_counties.json")), locations=outside["GEOID"], z=[0] * len(outside),
+            featureidkey="id", colorscale=[[0, "#141a12"], [1, "#141a12"]], showscale=False, marker_line_width=0,
+            hoverinfo="skip"))
     fig.update_geos(scope="usa", bgcolor=PANEL, showlakes=False, landcolor="#2a2f29", showland=True)
     plotly_look(fig, 460).update_layout(title="Fit score by county (gray counties are not ranked)")
     st.plotly_chart(fig, width="stretch", config={"scrollZoom": False})
     st.caption("Each ranked county is shaded by its fit score, and greener means a better fit for you. Gray counties "
-               "have no number for at least one factor, mostly because Zillow publishes no rent for them.")
+               "have no number for at least one factor, mostly because Zillow publishes no rent for them."
+               + (" Dark counties lie outside the region or state you picked." if filtered else ""))
 
-    st.markdown("## Your top counties")
-    show = ranked.head(top_n)
+    st.markdown(f"## Your top {show_n} counties" + (f" in {place_name}" if filtered else ""))
+    show = ranked.head(show_n)
     table = pd.DataFrame({"Rank": show["rank"], "County": show["label"], "Fit score": show["fit_score"]})
+    if filtered:
+        table.insert(1, "US rank", show["us_rank"])
     config = {"Fit score": st.column_config.ProgressColumn("Fit score", format="%.1f", min_value=0, max_value=100)}
     for name in order:
         header_text = FACTORS[name]["header"]
@@ -737,6 +801,11 @@ def method_section(order, family_geoid):
     st.write("The site drops every county with no number for one "
              "of your factors. On each factor, each remaining county gets a percentile score from 0 to 100, and the "
              "best county scores 100. The fit score is the weighted average of the percentile scores.")
+    st.markdown("### How the region and state filters work")
+    st.write("The region and state buttons narrow the list without changing any score. Each county keeps the fit "
+             "score it earns against every ranked county in the country, so its score is the same in every view. "
+             "Only its rank changes, and the US rank column keeps the national rank. The regions are the Census "
+             "Bureau's four regions, and Puerto Rico appears only under All.")
     st.markdown("### Caveats")
     st.markdown(
         "- Zillow publishes a rent for 1,358 of the 3,222 counties, mostly the larger rental markets, so the "
